@@ -40,7 +40,7 @@ def create_calendar(user_id, year, month):
     for day in range(1, calendar.monthrange(year, month)[1] + 1):
         display_day = str(day)
         if day == today and now.month == month and now.year == year:
-            display_day = f"[{display_day}]"
+            display_day = f"{display_day}🧐"
 
         date = f"{year}-{month:02d}-{day:02d}"
         event = db.get_event(user_id, date)
