@@ -1,4 +1,6 @@
+import calendar
 import sqlite3
+from datetime import datetime
 
 
 class Database:
@@ -101,6 +103,74 @@ class Database:
         except sqlite3.Error as e:
             print(f"Ошибка получения всех пользователей: {e}")
             return []
+
+    def get_last_event(self, user_id, year, month):
+        try:
+            self.cursor.execute(
+                """
+                    SELECT is_day, date FROM events
+                    WHERE user_id = ? AND strftime('%Y', date) = ? AND strftime('%m', date) = ?
+                    ORDER BY date DESC
+                    LIMIT 1
+                    """,
+                (user_id, str(year), str(month).zfill(2)),
+            )
+            return self.cursor.fetchone()  # Возвращаем кортеж (is_day, date) или None
+        except sqlite3.Error as e:
+            print(f"Ошибка получения последнего события: {e}")
+            return None
+
+    def get_last_four_events(self, user_id, year, month):
+        try:
+            self.cursor.execute(
+                """
+            SELECT is_day, date FROM events
+            WHERE user_id = ? AND strftime('%Y', date) = ? AND strftime('%m', date) = ?
+            ORDER BY date DESC
+            LIMIT 4
+            """,
+                (user_id, str(year), str(month).zfill(2)),
+            )
+            events = self.cursor.fetchall()
+
+            if (
+                not events
+            ):  # Если нет событий за текущий месяц, возвращаем пустой список
+                return []
+
+            last_event_date = datetime.strptime(
+                events[0][1], "%Y-%m-%d"
+            )  # Дата последнего события
+            num_days_in_month = calendar.monthrange(year, month)[
+                1
+            ]  # Количество дней в месяце
+
+            # Проверяем, достаточно ли дней до конца месяца для заполнения
+            remaining_days = num_days_in_month - last_event_date.day
+            if remaining_days < 6:  # 2 дня + 2 ночи + 4 пропуска = 8 дней (минимум)
+                return []  # Недостаточно дней, возвращаем пустой список
+
+            return [
+                row[0] for row in events
+            ]  # Возвращаем список типов событий (True/False)
+
+        except sqlite3.Error as e:
+            print(f"Ошибка получения событий: {e}")
+            return []
+
+    def delete_events_for_month(self, user_id, year, month):
+        try:
+            self.cursor.execute(
+                """
+            DELETE FROM events
+            WHERE user_id = ? AND strftime('%Y', date) = ? AND strftime('%m', date) = ?
+            """,
+                (user_id, str(year), str(month).zfill(2)),
+            )
+            return True
+        except sqlite3.Error as e:
+            print(f"Ошибка получения событий: {e}")
+            return False
 
     def close(self):
         """Закрытие соединения с базой данных"""

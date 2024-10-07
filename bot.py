@@ -7,16 +7,16 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
-    CallbackQueryHandler,
-    filters,
-    MessageHandler,
 )
 
-from my_calendar.calendar import calendar_command, calendar_callback
-from my_calendar.notification import notification_loop
+from database.database import Database
+from my_calendar.notification import Notification
+from my_calendar.telegram_calendar import Calendar
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
+
+db = Database()
 
 
 # В начале файла добавьте:
@@ -38,19 +38,18 @@ async def start(update: Update, context):
 
 async def main():
     app = Application.builder().token(TOKEN).build()
-
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.Text(["Календарь"]), calendar_command))
-    app.add_handler(CallbackQueryHandler(calendar_callback))
+
+    Calendar.setup(application=app, db=db)
+
     app.add_error_handler(error_handler)
 
-    print("Бот запущен...")
     try:
         await app.initialize()
         await app.start()
         await app.updater.start_polling(poll_interval=1)
 
-        await asyncio.create_task(notification_loop(app))
+        await asyncio.create_task(Notification.setup(application=app, db=db))
 
         await asyncio.Event().wait()  # Ожидание завершения работы бота
     finally:
